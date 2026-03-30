@@ -18,9 +18,13 @@
 ## Data Engineering
 ![Apache Spark](https://img.shields.io/badge/Apache%20Spark-FDEE21?style=for-the-badge&logo=apachespark&logoColor=black)
 # 📊 GitHub Stats:
-![](https://github-readme-stats.vercel.app/api?username=trencho&theme=dark&hide_border=false&include_all_commits=true&count_private=true)<br/>
+<!-- ![](https://github-readme-stats.vercel.app/api?username=trencho&theme=dark&hide_border=false&include_all_commits=true&count_private=true)<br/> -->
 ![](https://nirzak-streak-stats.vercel.app/?user=trencho&theme=dark&hide_border=false)<br/>
-![](https://github-readme-stats.vercel.app/api/top-langs/?username=trencho&theme=dark&hide_border=false&include_all_commits=true&count_private=true&layout=compact)
+<!-- ![](https://github-readme-stats.vercel.app/api/top-langs/?username=trencho&theme=dark&hide_border=false&include_all_commits=true&count_private=true&layout=compact) -->
+
+![Stats](./profile/stats.svg)
+![Top Languages](./profile/top-langs.svg)
+![Pinned](./profile/pin.svg)
 
 ## 🏆 GitHub Trophies
 ![](https://github-profile-trophy.vercel.app/?username=trencho&theme=apprentice&no-frame=false&no-bg=true&margin-w=4)
