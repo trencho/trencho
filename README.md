@@ -1,4 +1,9 @@
 
+## 🌐 Portfolio:
+[![Portfolio](https://img.shields.io/badge/Portfolio-trencho.github.io-2b7a78?style=for-the-badge&logo=react&logoColor=white)](https://trencho.github.io/)
+
+🔗 [trencho.github.io](https://trencho.github.io/) — Backend & Data Engineer portfolio.
+
 ## 🌐 Socials:
 [![Facebook](https://img.shields.io/badge/Facebook-%231877F2.svg?logo=Facebook&logoColor=white)](https://facebook.com/aleksandar.trenchevski) [![Instagram](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://instagram.com/trene96) [![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white)](https://linkedin.com/in/aleksandar-trenchevski-593b45168) [![X](https://img.shields.io/badge/X-black.svg?logo=X&logoColor=white)](https://x.com/k0lega96) 
 
