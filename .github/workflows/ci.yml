@@ -1,0 +1,52 @@
+# CI for the profile repo.
+#
+# There is nothing here to compile or test, so this exists for one reason: to give auto-merge a
+# REAL gate. A Dependabot bump to an action pin can only break one thing -- the workflow that
+# regenerates the README cards -- and it breaks it silently, because a scheduled job that stops
+# running looks exactly like a repo where nothing changed. actionlint catches a bad `uses:` and an
+# invalid workflow before the bump merges.
+#
+# Canonical job id `build`: dependabot-auto-merge.yml gates on that exact check name.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Ships preinstalled on ubuntu-latest runners; no download, no pinning problem of its own.
+      - name: Lint workflows
+        run: |
+          set -euo pipefail
+          curl -fsSL -o actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz
+          tar -xzf actionlint.tar.gz actionlint
+          ./actionlint -color
+
+      # A workflow that parses but names a nonexistent action still fails only at run time, which
+      # for a scheduled job means "quietly, next midnight". Assert the YAML loads as a final check.
+      - name: Assert every workflow parses
+        run: |
+          python3 -c "
+          import glob, sys, yaml
+          bad = 0
+          for f in sorted(glob.glob('.github/workflows/*.yml')):
+              try:
+                  yaml.safe_load(open(f, encoding='utf-8')); print('OK  ', f)
+              except Exception as e:
+                  bad += 1; print(f'::error::{f}: {e}')
+          sys.exit(1 if bad else 0)"

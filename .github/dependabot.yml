@@ -1,0 +1,28 @@
+# Dependabot config for the profile repo.
+#
+# This repo has NO application dependencies: it is a README, a profile/ folder, and one scheduled
+# workflow that regenerates the README stat cards. So `github-actions` is the only ecosystem that
+# applies -- and it is the one that matters, because action pins go stale silently with no lockfile
+# tracking them. Before this file existed nothing updated them at all, and `actions/checkout` had
+# drifted to v6.0.2 while the rest of the fleet was on v7.
+#
+# Deliberately absent, and why (so the workflow-parity check reports these as known, not as gaps):
+#   - no app-dependency ecosystem  -> there are no manifests
+#   - no `docker` / `docker-compose` -> no Dockerfile, no compose file
+#   - no security-scan.yml         -> nothing for OSV to scan
+#   - no dependency-cleanup.yml    -> no dependencies to find unused, no `ignore:` holds to re-test
+#   - no package-retention.yml     -> publishes no container images
+#
+# Fleet schedule: github-actions bumps land Monday 05:00, per the shared timetable.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "Europe/Skopje"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
