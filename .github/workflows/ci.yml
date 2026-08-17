@@ -28,7 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      # Ships preinstalled on ubuntu-latest runners; no download, no pinning problem of its own.
+      # Downloaded at a pinned version rather than taken from the runner image: actionlint is
+      # NOT preinstalled on ubuntu-latest, and a floating fetch would change the lint rules
+      # under us without a commit. The tarball URL is the pin.
       - name: Lint workflows
         run: |
           set -euo pipefail
