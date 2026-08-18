@@ -1,50 +1,43 @@
-# Self-gating Dependabot auto-merge — for FREE PRIVATE repos, where GitHub's native
-# auto-merge (and branch protection / rulesets) are Pro-only. This does NOT use
-# `gh pr merge --auto`; instead it waits for the named CI checks to pass, then merges
-# the PR directly. Lands EVERY update type — patch, minor and major. The only thing held
-# back is a PRE-RELEASE target version; see the guard step below.
-# Public or Pro repos should prefer the simpler native variant (github-actions-automerge.yml).
+# Dependabot auto-merge skeleton — drop into a target project as
+# .github/workflows/dependabot-auto-merge.yml. See references/dependency-automation-guide.md.
 #
-# Set REQUIRED_CHECKS to the exact check-run name(s) that gate a merge, ONE PER LINE. That is
-# a job's `name:` when it has one, and its job id otherwise — get this wrong and the gate waits
-# for a check that never appears, then times out instead of merging. List ONLY the checks that
-# must be green; others (e.g. a red-but-accepted security scan) are ignored, which is the point
-# of naming them explicitly. Read the names off a real run, not off the YAML:
-#   gh run view <run-id> --json jobs --jq '.jobs[].name'
-# and confirm they appear on a PULL REQUEST head — a workflow that is `pull_request`-only produces
-# no check at all on a push commit, so a name verified against master may never appear on a PR.
+# Lands EVERY update type automatically — patch, minor and major — once CI is green. The only
+# thing held back is a PRE-RELEASE target version; see the guard step below.
+#
+# INERT until two repo settings are on (the workflow can't set these):
+#   1. Settings -> General -> "Allow auto-merge".
+#   2. Branch protection on the default branch with the CI job(s) as REQUIRED status checks,
+#      and set them **strict** ("Require branches to be up to date before merging") — see below.
+#      Without required checks, `gh pr merge --auto` merges immediately (no real gate).
+#   A red REQUIRED check blocks every auto-merge — keep an unfixed security scan non-required.
 #
 # ---------------------------------------------------------------------------------------------
-# WITH MAJORS MERGING, THE NAMED CHECKS ARE THE ENTIRE GATE.
+# WITH MAJORS MERGING, CI IS THE ENTIRE GATE.
 #
-# Under a patch/minor policy a broken major was caught by a human reading the PR. That reviewer is
-# gone now, so REQUIRED_CHECKS is the only thing standing between an upstream breaking change and
-# the default branch. Name the job that actually builds AND tests — not a lint-only job.
+# Under a patch/minor policy a broken major was caught by a human reading the PR. That reviewer
+# is gone now, so the required status checks are the only thing standing between an upstream
+# breaking change and the default branch. Two consequences:
+#   - The CI job must genuinely exercise the project (build AND test), not just compile it.
+#   - `strict` is no longer a nicety — see the next block.
 #
-# DOCUMENTED DEVIATION for this repo: `build` IS a lint-only job, because this repo is a README, a
-# profile/ folder and one scheduled workflow — there is nothing to compile and nothing to test. The
-# only thing a Dependabot PR here can break is a `uses:` pin, and actionlint plus a YAML parse
-# catches exactly that. Stating it because the guidance above is right in general and would
-# otherwise read as quietly ignored.
+# WHY `strict` MATTERS, and not just for tidiness.
 #
-# IMPORTANT — what this workflow does NOT verify, and the setting that fixes it.
+# An auto-merge lands via GITHUB_TOKEN, and GitHub raises NO workflow events for its own token
+# (anti-recursion). So the resulting commit on the base branch gets no CI run, no security scan
+# and no deploy: **the merged state of the branch is never verified.** Two PRs that were each
+# green against an older base can combine into a broken tree and sit there un-flagged. Observed:
+# two Dependabot PRs merged 30 seconds apart produced a malformed lockfile that broke a default
+# branch for three days, because each PR's CI had only ever seen its own base.
 #
-# A merge performed with GITHUB_TOKEN (which is what the final `gh pr merge` below is) raises NO
-# workflow events: GitHub suppresses them to prevent recursion. So the merge commit this creates
-# gets no CI run, no security scan and no deploy. **Nothing ever verifies the merged state of the
-# base branch.** Two PRs that were each green against an older base can therefore combine into a
-# broken tree, and it will sit there un-flagged — observed in the wild: two Dependabot PRs merged
-# 30 seconds apart produced a malformed lockfile that broke the default branch for three days.
-#
-# The fix is to require branches to be up to date before merging ("strict" required status
-# checks), so the PR's green CI *is* the merge result:
+# `strict` closes it by refusing a stale branch, so the PR's green CI *is* the merge result:
 #   gh api -X PATCH repos/OWNER/REPO/branches/BRANCH/protection/required_status_checks \
-#     -F strict=true                      # targeted; the full PUT resends every setting
-# On a FREE PRIVATE repo that returns 403 (Pro-only) — the same limitation that makes this
-# self-gated variant necessary at all. There, the residual risk is real and has to be accepted or
-# handled another way, and it is larger now that majors merge unattended.
+#     -F strict=true      # targeted — the full PUT .../protection resends (and can drop) everything
 #
-# The BEHIND handler in the run block below is what keeps auto-merge working once strict is on.
+# Trade-off worth knowing: with `strict`, a PR whose branch has fallen behind will sit queued
+# until something updates it. Dependabot normally rebases its own PRs; if you see them stall,
+# comment `@dependabot rebase`. Do NOT reach for `gh pr update-branch` in a workflow — a branch
+# updated by GITHUB_TOKEN gets no CI on the new head, so it would be up to date and permanently
+# ungateable. (The self-gated variant automates this; see github-actions-automerge-selfgated.yml.)
 # ---------------------------------------------------------------------------------------------
 name: Dependabot auto-merge
 
@@ -53,7 +46,6 @@ on: pull_request
 permissions:
   contents: write
   pull-requests: write
-  checks: read
 
 jobs:
   auto-merge:
@@ -127,88 +119,23 @@ jobs:
             echo "pre-release target detected ('$offender') - not auto-merging."
           fi
 
+      - name: Enable auto-merge
+        if: ${{ steps.prerelease.outputs.held == 'false' }}
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # If branch protection requires an approval, add before the merge step:
+        #   gh pr review --approve "$PR_URL"
+
       - name: Explain a held pre-release
         if: ${{ steps.prerelease.outputs.held == 'true' }}
+        run: |
+          gh pr comment "$PR_URL" --body \
+            "Held: this bump targets a **pre-release** version (\`$OFFENDER\`). Every other update type auto-merges; pre-releases need a human, because an image tag like \`3.15.0rc1\` is scored as an ordinary version bump. Merge manually if it is intended."
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           # The offending VALUE, not `new-version` — which is empty on exactly the grouped PRs the
           # metadata check exists to cover, and would report the hold against a blank version.
           OFFENDER: ${{ steps.prerelease.outputs.offender }}
-        run: |
-          gh pr comment "$PR_URL" --body \
-            "Held: this bump targets a **pre-release** version (\`$OFFENDER\`). Every other update type auto-merges; pre-releases need a human, because an image tag like \`3.15.0rc1\` is scored as an ordinary version bump. Merge manually if it is intended."
-
-      - name: Wait for required checks, then merge
-        if: ${{ steps.prerelease.outputs.held == 'false' }}
-        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.event.pull_request.head.sha }}
-          # One check-run NAME per line. These are the names GitHub displays, which is a job's
-          # `name:` when it has one and its job id otherwise — naming the job id here for a job
-          # that has a `name:` waits for a check that never appears, and the loop times out
-          # instead of merging. One per line (not space-separated) so a name containing spaces,
-          # like "build and test (JDK 25)", is not split apart.
-          REQUIRED_CHECKS: |
-            build
-        run: |
-          set -euo pipefail
-
-          # ---------------------------------------------------------------------------------------
-          # If the branch is BEHIND, ask Dependabot to rebase and stop. Only relevant once the branch
-          # has `strict` required status checks ("Require branches to be up to date before merging"),
-          # which you should enable -- see the header note on why an auto-merged commit is never
-          # verified. Until then mergeStateStatus never reports BEHIND and this is a no-op.
-          #
-          # Ask DEPENDABOT to update the branch; do NOT use `gh pr update-branch` here. A branch
-          # updated with GITHUB_TOKEN produces no CI run (GitHub raises no workflow events for its
-          # own token), so the branch would become up to date with NO checks on the new head --
-          # permanently unable to satisfy the very gate it was updated for. Dependabot's own push
-          # does trigger CI, and the resulting `synchronize` re-runs this workflow on the new head.
-          # ---------------------------------------------------------------------------------------
-          state=$(gh pr view "$PR_URL" --json mergeStateStatus --jq .mergeStateStatus)
-          if [ "$state" = "BEHIND" ]; then
-            gh pr comment "$PR_URL" --body '@dependabot rebase'
-            echo "branch is behind the base; asked Dependabot to rebase. A later run will merge it."
-            exit 0
-          fi
-
-          for _ in $(seq 1 60); do   # up to ~20 min (60 * 20s)
-            pending=0
-            while IFS= read -r name; do
-              [ -n "$name" ] || continue
-              row=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate \
-                --jq ".check_runs[] | select(.name==\"$name\") | [.status,(.conclusion // \"\")] | @tsv" | tail -1)
-              if [ -z "$row" ]; then pending=1; continue; fi          # check not registered yet
-              status=$(printf '%s' "$row" | cut -f1)
-              concl=$(printf '%s' "$row" | cut -f2)
-              [ "$status" != "completed" ] && pending=1
-              if [ "$status" = "completed" ] && [ "$concl" != "success" ]; then
-                echo "required check '$name' concluded '$concl' — not merging."; exit 1
-              fi
-            done <<< "$REQUIRED_CHECKS"
-            if [ "$pending" -eq 1 ]; then echo "waiting for required checks..."; sleep 20; continue; fi
-            echo "all required checks green — merging."
-            if gh pr merge "$PR_URL" --squash --delete-branch; then
-              exit 0
-            fi
-            # The merge can be refused because the branch fell behind DURING the wait above. The
-            # BEHIND check before this loop cannot see that: a sibling PR landing mid-loop is the
-            # common case, not an edge one, and recreating several Dependabot PRs at once
-            # guarantees it. Hand it back to Dependabot rather than failing the run -- a branch
-            # updated with GITHUB_TOKEN would get no CI on the new head (the same anti-recursion
-            # rule as above) and could never satisfy the gate.
-            state=$(gh pr view "$PR_URL" --json mergeStateStatus --jq .mergeStateStatus)
-            if [ "$state" = "BEHIND" ]; then
-              gh pr comment "$PR_URL" --body '@dependabot rebase'
-              echo "merge refused: branch fell behind during the wait; asked Dependabot to rebase."
-              exit 0
-            fi
-            # Any other refusal is real and must stay loud. One seen in the wild: GitHub blocks a
-            # GITHUB_TOKEN merge of a PR that edits a workflow file ("refusing to allow a GitHub
-            # App to create or update workflow ... without `workflows` permission").
-            echo "merge refused while mergeStateStatus=$state."; exit 1
-          done
-          echo "timed out waiting for required checks."; exit 1
