@@ -1,0 +1,81 @@
+# Detects the README card job going quiet.
+#
+# `grs.yml` regenerates the profile cards on a daily cron. Nothing noticed when it stopped
+# working: a scheduled job that fails, or that GitHub disables after 60 days of repository
+# inactivity, looks exactly like a repo where nothing has changed. `ci.yml` guards the BUMP
+# path (actionlint catches a bad `uses:` before it merges); this guards the RAN-AT-ALL path.
+#
+# Why the workflow RUN and not the file's git history: `grs.yml` commits only when a card's
+# bytes change, so a healthy day can leave `profile/stats.svg` untouched. Asserting on the
+# commit date would fire on a working job. The run record cannot be ambiguous that way.
+#
+# Deliberately NOT the job id `build`: dependabot-auto-merge.yml gates on that exact check
+# name, and a dead cron job must not wedge every merge in the repo. This reports; it blocks
+# nothing.
+name: Card freshness
+
+on:
+    schedule:
+        # An hour after grs.yml's 00:00 cron, so a run in flight is not read as a missing one.
+        - cron: "30 1 * * *"
+    pull_request:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    actions: read
+
+concurrency:
+    group: card-freshness-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    freshness:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Assert the card job ran recently, and succeeded
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  # Two daily cycles, so one missed or slow run is not an alert.
+                  MAX_AGE_HOURS: "48"
+              run: |
+                  set -euo pipefail
+
+                  runs=$(gh api \
+                      "repos/${GITHUB_REPOSITORY}/actions/workflows/grs.yml/runs?per_page=1&status=completed" \
+                      --jq '.workflow_runs[0] | "\(.created_at)\t\(.conclusion)\t\(.html_url)"')
+
+                  # An empty result is the 60-day-disable case: the workflow exists and has no
+                  # completed runs at all. Failing here is the whole point -- `|| true` on this
+                  # lookup would report silence identically whether nothing is wrong or nothing
+                  # was measured.
+                  if [ -z "${runs}" ]; then
+                      echo "::error::grs.yml has no completed runs. A scheduled workflow is disabled after 60 days of repository inactivity."
+                      exit 1
+                  fi
+
+                  created_at=$(printf '%s' "${runs}" | cut -f1)
+                  conclusion=$(printf '%s' "${runs}" | cut -f2)
+                  url=$(printf '%s' "${runs}" | cut -f3)
+
+                  age_hours=$(( ( $(date -u +%s) - $(date -u -d "${created_at}" +%s) ) / 3600 ))
+                  echo "Last completed grs.yml run: ${created_at} (${age_hours}h ago), conclusion=${conclusion}"
+                  echo "${url}"
+
+                  failed=0
+
+                  if [ "${age_hours}" -gt "${MAX_AGE_HOURS}" ]; then
+                      echo "::error::The card job last ran ${age_hours}h ago, over the ${MAX_AGE_HOURS}h budget. The daily cron has stopped firing."
+                      failed=1
+                  fi
+
+                  # Ran but failed is the mode that actually bit: the cards were generated and the
+                  # commit was rejected, every day, with the only visible symptom being cards that
+                  # quietly stopped updating.
+                  if [ "${conclusion}" != "success" ]; then
+                      echo "::error::The card job's last completed run concluded '${conclusion}'. The cards are not being updated."
+                      failed=1
+                  fi
+
+                  exit "${failed}"
