@@ -2,7 +2,14 @@ name: Update README cards
 
 on:
     schedule:
-        - cron: "0 0 * * *"
+        # Weekly, not daily. Profile statistics move slowly -- a contribution graph and a language
+        # breakdown are not meaningfully different one morning to the next -- while a daily
+        # regeneration committed ~365 SVG diffs a year to master for that non-difference.
+        #
+        # If you change this, change MAX_AGE_HOURS in card-freshness.yml with it. That detector
+        # measures the age of the last successful run against a fixed budget, so widening the
+        # cadence without widening the budget makes it report a healthy job as broken.
+        - cron: "0 0 * * 1"
     workflow_dispatch:
 
 # Least privilege at the top so a step added later cannot silently inherit write scope;

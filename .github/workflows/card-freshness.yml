@@ -38,7 +38,11 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   # Two daily cycles, so one missed or slow run is not an alert.
-                  MAX_AGE_HOURS: "48"
+                  # 8 days: grs.yml runs weekly (Mondays 00:00), so a healthy job is up to 168h
+                  # old by the time the next one is due, and the extra day absorbs a late or
+                  # retried run without crying wolf. Was 48h when the cron was daily -- these two
+                  # numbers are one decision and must move together.
+                  MAX_AGE_HOURS: "192"
               run: |
                   set -euo pipefail
 
