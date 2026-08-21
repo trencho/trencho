@@ -23,6 +23,12 @@ jobs:
             contents: write
 
         steps:
+            # A plain GITHUB_TOKEN checkout, and the push at the end of this job uses it.
+            # That works because master carries NO branch protection (removed 2026-08-21): a
+            # required status check made this push impossible, since a direct push cannot carry
+            # one and GitHub refuses to excuse GITHUB_TOKEN from it on a personal repository.
+            # If protection is ever restored, this job breaks again at the push -- and
+            # card-freshness.yml is what will say so.
             - uses: actions/checkout@v7.0.1
 
             - name: Generate stats card
