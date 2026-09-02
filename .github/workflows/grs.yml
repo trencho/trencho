@@ -36,7 +36,7 @@ jobs:
             # one and GitHub refuses to excuse GITHUB_TOKEN from it on a personal repository.
             # If protection is ever restored, this job breaks again at the push -- and
             # card-freshness.yml is what will say so.
-            - uses: actions/checkout@v7.0.1
+            - uses: actions/checkout@v7
 
             - name: Generate stats card
               uses: readme-tools/github-readme-stats-action@e856fc8de9d7729b463c468911e232cfbdc3d55e # v2
