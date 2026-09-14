@@ -1,6 +1,6 @@
 # Detects the README card job going quiet.
 #
-# `grs.yml` regenerates the profile cards on a daily cron. Nothing noticed when it stopped
+# `grs.yml` regenerates the profile cards on a weekly cron. Nothing noticed when it stopped
 # working: a scheduled job that fails, or that GitHub disables after 60 days of repository
 # inactivity, looks exactly like a repo where nothing has changed. `ci.yml` guards the BUMP
 # path (actionlint catches a bad `uses:` before it merges); this guards the RAN-AT-ALL path.
@@ -37,7 +37,7 @@ jobs:
             - name: Assert the card job ran recently, and succeeded
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  # Two daily cycles, so one missed or slow run is not an alert.
+                  # A full weekly cycle plus a day, so one missed or slow run is not an alert.
                   # 8 days: grs.yml runs weekly (Mondays 00:00), so a healthy job is up to 168h
                   # old by the time the next one is due, and the extra day absorbs a late or
                   # retried run without crying wolf. Was 48h when the cron was daily -- these two
@@ -70,7 +70,7 @@ jobs:
                   failed=0
 
                   if [ "${age_hours}" -gt "${MAX_AGE_HOURS}" ]; then
-                      echo "::error::The card job last ran ${age_hours}h ago, over the ${MAX_AGE_HOURS}h budget. The daily cron has stopped firing."
+                      echo "::error::The card job last ran ${age_hours}h ago, over the ${MAX_AGE_HOURS}h budget. The weekly cron has stopped firing."
                       failed=1
                   fi
 
