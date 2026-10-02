@@ -9,8 +9,8 @@
 # bytes change, so a healthy day can leave `profile/stats.svg` untouched. Asserting on the
 # commit date would fire on a working job. The run record cannot be ambiguous that way.
 #
-# Deliberately NOT the job id `build`: dependabot-auto-merge.yml gates on that exact check
-# name, and a dead cron job must not wedge every merge in the repo. This reports; it blocks
+# Deliberately a separate workflow and NOT in ci.yml: the `auto-merge` job there gates on its
+# `needs:`, and a dead cron job must not wedge every merge in the repo. This reports; it blocks
 # nothing.
 name: Card freshness
 
