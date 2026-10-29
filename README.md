@@ -4,6 +4,13 @@
 
 🔗 [trencho.github.io](https://trencho.github.io/). Backend & Data Engineer portfolio.
 
+## 🎵 Building: CrowdTune
+[![CrowdTune](https://img.shields.io/badge/CrowdTune-crowdtune.live-c2185b?style=for-the-badge)](https://crowdtune.live/?utm_source=github&utm_campaign=launch)
+
+🔗 [crowdtune.live](https://crowdtune.live/?utm_source=github&utm_campaign=launch). Let your party guests pick the music: they scan a QR code, request songs and vote from their phones, no app needed.
+
+[![Facebook](https://img.shields.io/badge/Facebook-%231877F2.svg?logo=Facebook&logoColor=white)](https://facebook.com/crowdtune) [![Instagram](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://instagram.com/crowdtune.live) [![TikTok](https://img.shields.io/badge/TikTok-%23000000.svg?logo=TikTok&logoColor=white)](https://tiktok.com/@crowdtune) [![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white)](https://linkedin.com/company/crowdtune)
+
 ## 🌐 Socials:
 [![Facebook](https://img.shields.io/badge/Facebook-%231877F2.svg?logo=Facebook&logoColor=white)](https://facebook.com/aleksandar.trenchevski) [![Instagram](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://instagram.com/trene96) [![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white)](https://linkedin.com/in/aleksandar-trenchevski-593b45168) [![X](https://img.shields.io/badge/X-black.svg?logo=X&logoColor=white)](https://x.com/k0lega96) 
 
